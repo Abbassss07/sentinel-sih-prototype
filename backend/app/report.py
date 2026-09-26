@@ -30,7 +30,7 @@ def _paragraph(value: object, style: ParagraphStyle) -> Paragraph:
     return Paragraph(escape(str(value or "-")).replace("\n", "<br/>"), style)
 
 
-def build_report(case: dict, scenario: dict, ledger: dict, audit: list[dict], report_id: str, generated_at: str) -> bytes:
+def build_report(case: dict, scenario: dict, ledger: dict, audit: list[dict], checks: dict, report_id: str, generated_at: str) -> bytes:
     stream = BytesIO()
     styles = getSampleStyleSheet()
     styles.add(ParagraphStyle(name="SentinelTitle", fontName="Helvetica-Bold", fontSize=18, leading=23, textColor=INK, spaceAfter=5))
@@ -101,20 +101,37 @@ def build_report(case: dict, scenario: dict, ledger: dict, audit: list[dict], re
     section("Synthetic document record", [
         ("Credential ID", scenario["credential_id"]),
         ("Holder", scenario["holder_name"]),
-        ("Date of birth", scenario["date_of_birth"]),
-        ("Issuer", "Republic of Testland (synthetic)"),
+        ("Visible date of birth", scenario["document"]["date_of_birth"]),
+        ("Expiry", scenario["document"]["expiry_date"]),
+        ("Issuer", scenario["document"]["issuer"] + " (synthetic)"),
+        ("MRZ line 1", scenario["document"]["mrz_line_1"]),
+        ("MRZ line 2", scenario["document"]["mrz_line_2"]),
     ])
-    findings("OCR and MRZ-like findings", scenario["document_checks"])
-    findings("Liveness and face checks", [*scenario["liveness_checks"], scenario["face_check"]])
+    document_check = checks.get("document_check", {}).get("mrz", {})
+    liveness_check = checks.get("liveness", {})
+    face_check = checks.get("face_check", {})
+    findings("Document and MRZ findings", [
+        "Visible fields sourced from seeded synthetic case data; no OCR inference run",
+        f"TD3 MRZ check digits valid: {document_check.get('checksums_valid', False)}",
+        f"Visible fields agree with MRZ: {document_check.get('cross_field_match', False)}",
+    ])
+    findings("Liveness and face checks", [
+        f"Guided turn-and-return challenge recorded: {liveness_check.get('completed', False)}; no camera analysis run",
+        f"Reference person match: {face_check.get('reference_match', False)}; seeded outcome, no face model inference run",
+    ])
     section("Credential ledger proof", [
         ("Adapter", ledger["adapter"]),
         ("Credential status", ledger["status"]),
-        ("Document hash", "MATCH" if ledger["document_hash_match"] else "MISMATCH"),
+        ("Document hash", "MATCH" if ledger["document_hash_match"] is True else "MISMATCH" if ledger["document_hash_match"] is False else "NOT CHECKED"),
+        ("Issuer", ledger.get("issuer") or "Not found"),
+        ("Issued hash", "\n".join((ledger["credential_hash"][:32], ledger["credential_hash"][32:])) if ledger.get("credential_hash") else "Not found"),
         ("Transaction ID", ledger["transaction_id"]),
         ("Verification time", ledger["verified_at"]),
+        ("Event hash", "\n".join((ledger["event_hash"][:32], ledger["event_hash"][32:])) if ledger.get("event_hash") else "-"),
     ])
     section("Risk and officer decision", [
         ("Rule-based risk level", scenario["risk_level"]),
+        ("Rule points", str(scenario.get("risk_points", 0)) + " / 100 (not model confidence)"),
         ("Officer action", case["officer_action"]),
         ("Officer note", case["officer_note"] or "No note entered"),
         ("Decision recorded", case["updated_at"]),
@@ -122,6 +139,6 @@ def build_report(case: dict, scenario: dict, ledger: dict, audit: list[dict], re
     findings("Reasons", scenario["risk_reasons"])
     findings("Audit trail", [f"{event['created_at']} | {event['event_type']} | {event['description']} | ID {event['id']}" for event in audit])
     story.append(Spacer(1, 12))
-    story.append(_paragraph("Method limits: OCR, liveness, and face outcomes in this milestone are seeded synthetic results. The ledger proof comes from a local simulator. No raw document or biometric data is stored on-chain.", styles["SentinelSubtitle"]))
+    story.append(_paragraph("Method limits: OCR, liveness, and face outcomes in this milestone are seeded synthetic results. MRZ check digits and field comparisons run as code. The hash-linked ledger is a local simulator, not Hyperledger Fabric. No raw document image or biometric data is stored in ledger events.", styles["SentinelSubtitle"]))
     document.build(story)
     return stream.getvalue()
