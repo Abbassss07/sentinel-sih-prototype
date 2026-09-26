@@ -37,6 +37,7 @@ def build_report(case: dict, scenario: dict, ledger: dict, audit: list[dict], ch
     styles.add(ParagraphStyle(name="SentinelSubtitle", fontName="Helvetica", fontSize=9, leading=14, textColor=MUTED))
     styles.add(ParagraphStyle(name="SentinelSection", fontName="Helvetica-Bold", fontSize=10, leading=14, textColor=INK, spaceBefore=17, spaceAfter=7))
     styles.add(ParagraphStyle(name="SentinelBody", fontName="Helvetica", fontSize=9, leading=14, textColor=INK))
+    styles.add(ParagraphStyle(name="SentinelAudit", fontName="Helvetica", fontSize=8, leading=11, textColor=INK))
     styles.add(ParagraphStyle(name="SentinelLabel", fontName="Helvetica", fontSize=8, leading=12, textColor=MUTED))
     styles.add(ParagraphStyle(name="SentinelNotice", fontName="Helvetica-Bold", fontSize=8, leading=12, textColor=ACCENT, alignment=TA_CENTER))
 
@@ -84,11 +85,11 @@ def build_report(case: dict, scenario: dict, ledger: dict, audit: list[dict], ch
         ]))
         story.append(KeepTogether([heading, table]))
 
-    def findings(title, items):
+    def findings(title, items, compact=False):
         story.append(_paragraph(title.upper(), styles["SentinelSection"]))
         for item in items:
-            story.append(_paragraph(f"- {item}", styles["SentinelBody"]))
-            story.append(Spacer(1, 4))
+            story.append(_paragraph(f"- {item}", styles["SentinelAudit"] if compact else styles["SentinelBody"]))
+            story.append(Spacer(1, 2 if compact else 4))
 
     section("Case and report", [
         ("Case ID", case["id"]),
@@ -137,8 +138,7 @@ def build_report(case: dict, scenario: dict, ledger: dict, audit: list[dict], ch
         ("Decision recorded", case["updated_at"]),
     ])
     findings("Reasons", scenario["risk_reasons"])
-    findings("Audit trail", [f"{event['created_at']} | {event['event_type']} | {event['description']} | ID {event['id']}" for event in audit])
-    story.append(Spacer(1, 12))
     story.append(_paragraph("Method limits: OCR, liveness, and face outcomes in this milestone are seeded synthetic results. MRZ check digits and field comparisons run as code. The hash-linked ledger is a local simulator, not Hyperledger Fabric. No raw document image or biometric data is stored in ledger events.", styles["SentinelSubtitle"]))
+    findings("Audit trail", [f"{event['created_at']} | {event['event_type']} | {event['description']}" for event in audit], compact=True)
     document.build(story)
     return stream.getvalue()
