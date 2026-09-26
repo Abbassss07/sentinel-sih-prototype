@@ -1,0 +1,19 @@
+# Local Python environment and generated state
+backend/.venv/
+backend/sentinel.db
+backend/__pycache__/
+backend/app/__pycache__/
+*.py[cod]
+
+# Frontend dependencies and builds
+frontend/node_modules/
+frontend/dist/
+
+# Local editor and operating system files
+.DS_Store
+.vscode/
+.idea/
+
+# Local QA assets
+work/
+outputs/
