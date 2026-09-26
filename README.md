@@ -7,7 +7,7 @@ SENTINEL is a local prototype for AI-assisted identity and document screening. I
 - A React officer console with the approved guided screening flow.
 - Three seeded test scenarios: credential clear, edited-document mismatch, and wrong-person.
 - A FastAPI API and SQLite case/audit store.
-- Deterministic, explainable findings—no confidence percentages or automated decisions.
+- Seeded, explainable test findings—no confidence percentages or automated decisions.
 - A separate **Generate final report** action after the officer decision. The PDF is stored as a BLOB in SQLite, with a SHA-256 digest and audit event, and can be downloaded from the case.
 
 ## Run locally
